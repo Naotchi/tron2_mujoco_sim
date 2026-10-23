@@ -54,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not included" (with submodule init note and pointer to the
   external `tron2-rl-deploy-python` ONNX repository), "Verification"
   section, and "Cite & support" block with `contact@limxdynamics.com`.
+- README images under `doc/`: `banner.png` (1600x640),
+  `social_preview.png` (1280x640, for GitHub Settings -> Social
+  preview), model cards `model_{sf,wf,da,dach,dasf}.png` (800x800,
+  rendered in MuJoCo from the pinned `robot-description` MJCF with one
+  camera and light setup), and English / Chinese diagrams
+  `architecture_{en,zh}.png`, `channels_{en,zh}.png` and
+  `tron2a_vs_tron2b_{en,zh}.png`. All PNGs carry no metadata chunks.
 
 ### Changed
 - **Communication is now limxsdk-only.** Every channel of every
@@ -76,6 +83,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   describe `<robot-ip>` as a placeholder token that users substitute
   with their own robot / simulator IP. No production or
   internal-network IP is embedded in this repository.
+- `README.md` / `README_zh-CN.md` restructured in parallel: banner,
+  badges, highlights, model lineup, demos, a "How it works" diagram and
+  a short quick start come first; the numbered reference sections
+  follow, then license, scope, distribution and citation text, moved
+  without wording changes. The English "Cite and support" section, left
+  empty by the previous rewrite, is filled in to match the Chinese one.
+  Corrected: the clone directory (`tron2_mujoco_sim`, was
+  `tron2-mujoco-sim`), the `limxsdk` version (`4.0.2`, the wheel pinned
+  in `limxsdk-lowlevel` and `pyproject.toml`; was `4.8+`), and the
+  gamepad section now links `limxdynamics/tron2_rl_deploy_python`.
 
 ### Removed
 - The `SFYG`, `WFYG` and `DASF2` robot types, whose arm and rear-body

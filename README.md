@@ -1,15 +1,22 @@
-# English | [中文](README_zh-CN.md)
-
 <!--
   SPDX-FileCopyrightText: 2024-2026 LimX Dynamics Technology Co., Ltd.
   SPDX-License-Identifier: Apache-2.0
 -->
 
-> **Distribution.** The primary public distribution point for this
-> repository is GitHub:
-> <https://github.com/limxdynamics/tron2_mujoco_sim>. The internal
-> LimX GitLab is a mirror; open issues, PRs, and security reports on
-> the GitHub repository.
+<p align="center">
+  <img src="doc/banner.png" alt="TRON2 MuJoCo Simulator: the DA, SF, DASF, WF and DACH TRON2A models rendered from robot-description" width="100%">
+</p>
+
+<p align="center">
+  <b>English</b> | <a href="README_zh-CN.md">中文</a>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-2f6feb" alt="License: Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/python-%E2%89%A53.10-2f6feb" alt="Python >= 3.10">
+  <img src="https://img.shields.io/badge/MuJoCo-%E2%89%A53.2.2-2f6feb" alt="MuJoCo >= 3.2.2">
+  <img src="https://img.shields.io/badge/limxsdk-4.0.2-2f6feb" alt="limxsdk 4.0.2">
+</p>
 
 # tron2-mujoco-sim
 
@@ -23,35 +30,86 @@ optional modules, assembled in `tron2_sim/variants/`. Every channel of every
 supported variant runs over the SDK's `*ForSim` simulator-side API — there is no
 second messaging stack.
 
-## License and attribution
+> **Scope:** this is the simulator side only; it runs no policy of its own.
+> Connect your controller over `limxsdk`, for example
+> [tron2_rl_deploy_python](https://github.com/limxdynamics/tron2_rl_deploy_python).
+> The simulator mirrors the hardware interface; it is not a safety net
+> (see [`SECURITY.md`](SECURITY.md)).
 
-Apache License, Version 2.0. See [`LICENSE`](LICENSE); SPDX identifier
-`Apache-2.0`.
+## Highlights
 
-- [`NOTICE`](NOTICE) — required attribution notice.
-- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — per-submodule and
-  per-dependency provenance.
-- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability, and the
-  simulation-versus-hardware boundary.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — development workflow, submodule
-  procedure, DCO sign-off.
-- [`CHANGELOG.md`](CHANGELOG.md) — release notes and items blocked on upstream.
+- **The robot's own wire format.** Controllers send `RobotCmd` and read
+  `RobotState` / `ImuData` through `limxsdk`, exactly as on hardware; only the
+  endpoint changes.
+- **Ten robot types, one entry point.** SF, WF, DA, DACH and DASF, each as
+  TRON2A and TRON2B, selected with `ROBOT_TYPE`.
+- **Joints mapped by name.** Wire order is resolved by joint name, so a model
+  whose XML declares actuators in a different order still matches the robot.
+- **Steady 1 kHz physics.** Physics and state publishing run on their own
+  thread; the viewer renders from a separate `MjData` and never stalls them.
+- **Headless for CI and remote machines.** `--headless --duration 30` runs the
+  same physics and I/O without graphics.
+- **DACH 2F gripper included.** A linkage gripper module with its calibration
+  in `tron2_sim/config/gripper_config.yaml`.
 
-## Scope
+## Model lineup
 
-**Included:** `simulator.py`, the `tron2_sim/` package (including the shipped
-gripper calibration under `tron2_sim/config/`), and documentation. Submodules
-are *declared* (pinned by commit) but not vendored:
+| | Model | Description | DoF | Formats |
+|:---:|---|---|:---:|---|
+| <img src="doc/model_sf.png" alt="SF_TRON2A" width="320"> | **SF**<br>`SF_TRON2A`<br>`SF_TRON2B` | Sole-foot biped. One SDK channel: `/motor/cmd\|state` + `/ImuData`. | 10 | MJCF · URDF · USD |
+| <img src="doc/model_wf.png" alt="WF_TRON2A" width="320"> | **WF**<br>`WF_TRON2A`<br>`WF_TRON2B` | Wheel-foot biped: 8 leg joints and 2 wheels on one channel. | 10 | MJCF · URDF · USD |
+| <img src="doc/model_da.png" alt="DA_TRON2A" width="320"> | **DA**<br>`DA_TRON2A`<br>`DA_TRON2B` | Dual arm on a stand, 7 joints per arm. | 14 | MJCF · URDF · USD |
+| <img src="doc/model_dach.png" alt="DACH_TRON2A" width="320"> | **DACH**<br>`DACH_TRON2A`<br>`DACH_TRON2B` | Dual arm + 2-DOF head. Loads `robot_grasper.xml` with the 2F gripper by default; `--no-grasper` for `robot.xml`. | 16 | MJCF · URDF · USD |
+| <img src="doc/model_dasf.png" alt="DASF_TRON2A" width="320"> | **DASF**<br>`DASF_TRON2A`<br>`DASF_TRON2B` | Humanoid composite: SF legs + DACH arms and head, on two channels (lower 10, upper 16). | 26 | MJCF · URDF · USD |
 
-- `robot-description/` — URDF / MJCF models and meshes.
-- `robot-joystick/` — gamepad helper binary used to drive a controller
-  by hand (see [§3a Gamepad control](#3a-gamepad-control)).
-- `limxsdk-lowlevel/` — LimX low-level SDK with pre-built wheels.
+Models come from the [`robot-description`](https://github.com/limxdynamics/tron2-robot-description)
+submodule; the simulator loads the MJCF, and TRON2A also ships Xacro sources.
+Rendered in MuJoCo with one camera and light setup; DASF is shown with its
+shoulders rolled down, the others in their zero pose.
 
-**Excluded by design:** trained control policies (`.onnx`, `.pt`, `.pth`,
-`.ckpt`), SDK binaries or wheels committed into this tree, calibration values,
-firmware, bag captures, and hard-coded private network addresses. Command
-examples use the placeholder `<robot-ip>`; the default endpoint is `127.0.0.1`.
+## Demos
+
+Recorded from this simulator, one per variant.
+
+| `SF_TRON2A` | `WF_TRON2A` |
+|:---:|:---:|
+| <img src="doc/gif/SF_TRON2A.gif" alt="SF_TRON2A demo" width="100%"> | <img src="doc/gif/WF_TRON2A.gif" alt="WF_TRON2A demo" width="100%"> |
+| **`DACH_TRON2A`** | **`DASF_TRON2A`** |
+| <img src="doc/gif/DACH_TRON2A.gif" alt="DACH_TRON2A demo" width="100%"> | <img src="doc/gif/DASF_TRON2A.gif" alt="DASF_TRON2A demo" width="100%"> |
+
+See [`doc/gif/README.md`](doc/gif/README.md) for the media rules CI enforces.
+
+## How it works
+
+<p align="center">
+  <img src="doc/architecture_en.png" alt="Controller to limxsdk to SdkBus to JointChannel to the 1 kHz physics thread, with state and IMU published back; a separate render thread drives the viewer" width="100%">
+</p>
+
+`ROBOT_TYPE` picks a variant from `tron2_sim/variants/`, which declares its
+channels and modules. Each physics tick applies the MIT law to the latest
+command, steps MuJoCo by 1 ms, reads the joint and IMU state and publishes it
+back through the SDK.
+
+## Quick start
+
+Load a robot in the viewer without ROS or a controller (needs
+[uv](https://docs.astral.sh/uv/); the `robot-description` checkout is about
+1.7 GB):
+
+```bash
+git clone https://github.com/limxdynamics/tron2_mujoco_sim.git
+cd tron2_mujoco_sim
+git submodule update --init --depth 1 robot-description limxsdk-lowlevel
+uv sync --extra sdk
+ROBOT_TYPE=DASF_TRON2A uv run simulator.py
+```
+
+Until a controller connects on `127.0.0.1` the joints get no torque, so legged
+models sag to the floor; press **Space** to pause and pose joints with the
+sliders. Start a controller such as
+[tron2_rl_deploy_python](https://github.com/limxdynamics/tron2_rl_deploy_python)
+to drive it. Details and the pip route are in
+[Dependencies and deployment](#1-dependencies-and-deployment).
 
 ## 1. Dependencies and deployment
 
@@ -60,13 +118,13 @@ examples use the placeholder `<robot-ip>`; the default endpoint is `127.0.0.1`.
 | Python | >= 3.10 | verified on 3.10 |
 | `mujoco` | >= 3.2.2 | physics and passive viewer |
 | `PyYAML` | >= 6.0 | reads `tron2_sim/config/gripper_config.yaml` |
-| `limxsdk` | 4.8+ | architecture-specific wheel inside the `limxsdk-lowlevel` submodule; installed separately, always with `--no-deps` |
+| `limxsdk` | 4.0.2 | architecture-specific wheel inside the `limxsdk-lowlevel` submodule; installed separately, always with `--no-deps` |
 
 Clone first, either way:
 
 ```bash
 git clone --recurse-submodules https://github.com/limxdynamics/tron2_mujoco_sim.git
-cd tron2-mujoco-sim
+cd tron2_mujoco_sim
 ```
 
 If you already cloned without submodules, run
@@ -147,7 +205,8 @@ changes to talk to either.
 ### 3a. Gamepad control
 
 For the controller-side gamepad workflow (SF/WF variants running the
-sibling `tron2-rl-deploy-python` deployment stack), initialize the
+sibling [`tron2_rl_deploy_python`](https://github.com/limxdynamics/tron2_rl_deploy_python)
+deployment stack), initialize the
 `robot-joystick` submodule and run the helper binary alongside the
 controller:
 
@@ -162,6 +221,10 @@ Default bindings:
 - `R1` — clear velocity commands.
 
 ## 4. Communication
+
+<p align="center">
+  <img src="doc/channels_en.png" alt="Channels, SDK topics and wire order for SF, WF, DA, DACH and DASF" width="100%">
+</p>
 
 **Wire-order contract** (cmd/state index order, identical on TRON2A and TRON2B):
 the DACH head is pitch then yaw; the DASF head is **yaw then pitch**. Where a
@@ -194,7 +257,7 @@ tron2_sim/
   config/               YAML loading + the shipped gripper_config.yaml
   modules/              optional capabilities; dach_grasper (2F linkage gripper)
   variants/             one file per base name; __init__.py is the registry
-doc/gif/                demo animations (see the gallery below)
+doc/gif/                demo animations (see the gallery above)
 ```
 
 Threading: the physics thread owns the physics `MjData`; the render thread owns
@@ -202,6 +265,10 @@ Threading: the physics thread owns the physics `MjData`; the render thread owns
 buffers, so `MjData` always has exactly one writer.
 
 ## 6. TRON2B versus TRON2A
+
+<p align="center">
+  <img src="doc/tron2a_vs_tron2b_en.png" alt="SF_TRON2A and SF_TRON2B side by side with knee limits, torque and base mass" width="100%">
+</p>
 
 Joint names, ordering and topics are byte-identical, so controller code needs no
 changes. But 2B is a hardware revision: **policies and gains tuned for 2A are not
@@ -216,20 +283,7 @@ directly transferable.**
 | SF knee / hip-yaw limits | `knee: [-2.618, 0.262]` | **sign-flipped** `knee: [-0.262, 2.618]`, link geometry mirrored |
 | DA / DACH base | floating (near-rigid freejoint) | **fixed** (no freejoint; R ignores the reset with a notice) |
 
-## 7. Demo gallery
-
-Recorded from this simulator, one per variant.
-
-| Variant | Demo |
-|---|---|
-| `SF_TRON2A` | ![SF_TRON2A](doc/gif/SF_TRON2A.gif) |
-| `WF_TRON2A` | ![WF_TRON2A](doc/gif/WF_TRON2A.gif) |
-| `DACH_TRON2A` | ![DACH_TRON2A](doc/gif/DACH_TRON2A.gif) |
-| `DASF_TRON2A` | ![DASF_TRON2A](doc/gif/DASF_TRON2A.gif) |
-
-See [`doc/gif/README.md`](doc/gif/README.md) for the media rules CI enforces.
-
-## 8. FAQ
+## 7. FAQ
 
 **`Error: Please set the ROBOT_TYPE ...`** — export `ROBOT_TYPE` first; the
 message lists every supported value.
@@ -261,4 +315,60 @@ them.
 **Simulator output disappears when piped** — fixed; if you see it on an older
 checkout, set `PYTHONUNBUFFERED=1`.
 
-## 9. Cite and support
+## License and attribution
+
+Apache License, Version 2.0. See [`LICENSE`](LICENSE); SPDX identifier
+`Apache-2.0`.
+
+- [`NOTICE`](NOTICE) — required attribution notice.
+- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — per-submodule and
+  per-dependency provenance.
+- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability, and the
+  simulation-versus-hardware boundary.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — development workflow, submodule
+  procedure, DCO sign-off.
+- [`CHANGELOG.md`](CHANGELOG.md) — release notes and items blocked on upstream.
+
+## Scope
+
+**Included:** `simulator.py`, the `tron2_sim/` package (including the shipped
+gripper calibration under `tron2_sim/config/`), and documentation. Submodules
+are *declared* (pinned by commit) but not vendored:
+
+- `robot-description/` — URDF / MJCF models and meshes.
+- `robot-joystick/` — gamepad helper binary used to drive a controller
+  by hand (see [§3a Gamepad control](#3a-gamepad-control)).
+- `limxsdk-lowlevel/` — LimX low-level SDK with pre-built wheels.
+
+**Excluded by design:** trained control policies (`.onnx`, `.pt`, `.pth`,
+`.ckpt`), SDK binaries or wheels committed into this tree, calibration values,
+firmware, bag captures, and hard-coded private network addresses. Command
+examples use the placeholder `<robot-ip>`; the default endpoint is `127.0.0.1`.
+
+> **Distribution.** The primary public distribution point for this
+> repository is GitHub:
+> <https://github.com/limxdynamics/tron2_mujoco_sim>. The internal
+> LimX GitLab is a mirror; open issues, PRs, and security reports on
+> the GitHub repository.
+
+## Cite and support
+
+If you use this simulator in academic or public work, please cite the
+repository:
+
+```
+@misc{limx_tron2_mujoco_sim_2026,
+  title  = {TRON2 MuJoCo simulator},
+  author = {LimX Dynamics},
+  year   = {2026},
+  howpublished = {\url{https://github.com/limxdynamics/tron2_mujoco_sim}}
+}
+```
+
+- **Bug reports / feature requests:**
+  [GitHub Issues](https://github.com/limxdynamics/tron2_mujoco_sim/issues).
+- **Questions / integration help:**
+  [GitHub Discussions](https://github.com/limxdynamics/tron2_mujoco_sim/discussions).
+- **Security reports:** email `contact@limxdynamics.com`; see
+  [`SECURITY.md`](SECURITY.md) for the sim-vs-real boundary note.
+- **Company / commercial contact:** <https://www.limxdynamics.com>.
